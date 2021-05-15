@@ -1,0 +1,56 @@
+#!/bin/sh
+dir='/cygdrive/j/FTP/Delicious Agony/Library'
+if [ "x$1" = "xy" ]
+then
+	ignore_dir="y"
+	shift
+fi
+tn=$4
+if [ "$1x" = "x" ]
+then
+        artist=`pwd | sed -e 's#-[^-]*$##' | awk -F'- ' '{print $NF}'`
+else
+        artist=$1
+fi
+if [ "$2x" = "x" -a "$3x" = "x" ]
+then
+        year=`pwd | awk -F'/' '{print $NF}' | awk -F'- ' '{print $1}'| awk -F' ' '{print $1}'`
+        album=`pwd | awk -F'/' '{print $NF}' | awk -F'- ' '{print $NF}'`
+else
+        album=$2
+        year=$3
+fi
+artist=`~/capitalize "$artist"`
+album=`~/capitalize "$album"`
+echo "Album: $artist - $album - $year"
+newdir="$dir/$artist/$year - $album"
+if [ "x$ignore_dir" = "x" -a -d "$newdir" ]
+then
+	echo "$newdir already exists!"
+	exit
+fi
+mkdir -p "$newdir"
+
+for i in *3
+do
+	if [ "$4x" = "yx" ]
+	then
+		echo Track for $i
+		read tn
+	else
+		tn=`perl -e 'print sprintf(q{%02d}, ++$ARGV[0]+$ARGV[1]);' $tn`
+	fi
+	name=`echo $i | sed -e 's/^.* - //' -e 's/.mp3//'`;
+	name=`perl -e '$n = $ARGV[0]; $n =~ s/([^\w\047][a-z])/uc($1)/ge; print ucfirst($n);' "$name"`
+	name=`echo $name | sed -e 's/ii/II/ig' -e 's/iii/III/ig' -e 's/iv\./IV./ig'`
+	trackname=$name
+	name=`echo $name | sed 's/--/-/g'`
+	trackname=`echo $trackname | sed -e 's/--/\//g' -e 's/-$/?/' -e 's/- /: /g'`
+	name=`~/capitalize "$name"`
+	trackname=`~/capitalize "$trackname"`
+	id3v2 -D "$i"
+	id3v2 -A "$album" -a "$artist" -g 92 -T $tn -t "$trackname" -y $year "$i"
+	mv "$i" "$newdir/$tn. $name.mp3"
+	echo Moved to "$newdir/$tn. $name.mp3"
+done
+id3v2 -l "$newdir/"*3 | grep TIT2
